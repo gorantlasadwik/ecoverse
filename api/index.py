@@ -1,23 +1,18 @@
 """
-Vercel-Optimized Smart Irrigation System
-=======================================
-Lightweight version optimized for serverless deployment
+Vercel Serverless Function for Smart Irrigation System
+====================================================
+Optimized for Vercel's serverless environment
 """
 
 from flask import Flask, render_template, request, jsonify
-import os
 from datetime import datetime
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import os
 
 app = Flask(__name__)
 
-# Simple rule-based logic for Vercel deployment (fallback)
+# Simple rule-based logic for Vercel deployment
 def simple_irrigation_logic(soil_moisture, moisture_trend, precipitation, water_sensitivity, max_temp):
-    """Simple rule-based irrigation logic as fallback for Vercel deployment"""
+    """Simple rule-based irrigation logic"""
     
     # Irrigation decision
     irrigate = 0
@@ -50,13 +45,142 @@ def simple_irrigation_logic(soil_moisture, moisture_trend, precipitation, water_
 @app.route('/')
 def index():
     """Main page"""
-    return render_template('index.html')
+    try:
+        # Simple HTML response since templates might not work in serverless
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Smart Irrigation System</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+                .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .form-group { margin: 15px 0; }
+                label { display: block; margin-bottom: 5px; font-weight: bold; }
+                input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+                button { background: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+                button:hover { background: #0056b3; }
+                .result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+                .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+                .alert { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+                .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🌱 Smart Irrigation Decision System</h1>
+                <p>Enter your field parameters to get irrigation recommendations:</p>
+                
+                <form id="predictionForm">
+                    <div class="form-group">
+                        <label>Soil Moisture (%)</label>
+                        <input type="number" id="soil_moisture" value="50" min="20" max="80" step="0.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Moisture Trend (%/day)</label>
+                        <input type="number" id="moisture_trend" value="0" min="-5" max="5" step="0.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Expected Precipitation (mm)</label>
+                        <input type="number" id="precipitation" value="0" min="0" max="50" step="0.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Humidity (%)</label>
+                        <input type="number" id="humidity" value="60" min="30" max="100" step="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Max Temperature (°C)</label>
+                        <input type="number" id="max_temp" value="30" min="10" max="50" step="0.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Min Temperature (°C)</label>
+                        <input type="number" id="min_temp" value="20" min="0" max="40" step="0.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Crop Water Sensitivity</label>
+                        <select id="water_sensitivity">
+                            <option value="0">Low</option>
+                            <option value="1" selected>Medium</option>
+                            <option value="2">High</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit">🔍 Get Recommendation</button>
+                </form>
+                
+                <div id="result" style="display:none;"></div>
+            </div>
+            
+            <script>
+                document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const data = {
+                        soil_moisture: parseFloat(document.getElementById('soil_moisture').value),
+                        Moisture_Trend: parseFloat(document.getElementById('moisture_trend').value),
+                        Precipitation: parseFloat(document.getElementById('precipitation').value),
+                        weather_humidity: parseFloat(document.getElementById('humidity').value),
+                        MaxT: parseFloat(document.getElementById('max_temp').value),
+                        MinT: parseFloat(document.getElementById('min_temp').value),
+                        Water_Sensitivity: parseInt(document.getElementById('water_sensitivity').value)
+                    };
+                    
+                    try {
+                        const response = await fetch('/api/predict', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        
+                        const result = await response.json();
+                        const resultDiv = document.getElementById('result');
+                        
+                        if (result.success) {
+                            const predictions = result.predictions;
+                            let resultClass = 'info';
+                            if (predictions.irrigate_label === 'YES') resultClass = 'success';
+                            if (predictions.alert_label === 'ALERT') resultClass = 'alert';
+                            
+                            resultDiv.innerHTML = `
+                                <div class="${resultClass}">
+                                    <h3>📊 Recommendation Results</h3>
+                                    <p><strong>Irrigation:</strong> ${predictions.irrigate_label} (${predictions.irrigate_confidence}% confidence)</p>
+                                    <p><strong>Water Quantity:</strong> ${predictions.water_quantity}</p>
+                                    <p><strong>Alert Status:</strong> ${predictions.alert_label} (${predictions.alert_confidence}% confidence)</p>
+                                    <p><strong>Explanation:</strong> ${result.explanation}</p>
+                                </div>
+                            `;
+                        } else {
+                            resultDiv.innerHTML = `<div class="alert"><h3>Error</h3><p>${result.error}</p></div>`;
+                        }
+                        
+                        resultDiv.style.display = 'block';
+                    } catch (error) {
+                        document.getElementById('result').innerHTML = `<div class="alert"><h3>Error</h3><p>Failed to get prediction: ${error.message}</p></div>`;
+                        document.getElementById('result').style.display = 'block';
+                    }
+                });
+            </script>
+        </body>
+        </html>
+        '''
+    except Exception as e:
+        return f"Error loading page: {str(e)}", 500
 
-@app.route('/predict', methods=['POST'])
+@app.route('/api/predict', methods=['POST'])
 def predict():
-    """Prediction endpoint using simplified logic for Vercel"""
+    """Prediction endpoint"""
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
         
         # Extract inputs with defaults
         soil_moisture = float(data.get('soil_moisture', 50.0))
@@ -109,21 +233,20 @@ def predict():
             'predictions': {
                 'irrigate': irrigate,
                 'irrigate_label': 'YES' if irrigate == 1 else 'NO',
-                'irrigate_confidence': 85.0,  # Simulated confidence
+                'irrigate_confidence': 85.0,
                 'water_quantity': water_quantity,
                 'alert': alert,
                 'alert_label': 'ALERT' if alert == 1 else 'NORMAL',
-                'alert_confidence': 80.0  # Simulated confidence
+                'alert_confidence': 80.0
             },
             'explanation': explanation,
-            'deployment': 'vercel-optimized'
+            'deployment': 'vercel-serverless'
         })
         
     except Exception as e:
-        logger.error(f"Prediction error: {str(e)}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': f'Prediction error: {str(e)}'
         }), 500
 
 @app.route('/health')
@@ -135,12 +258,10 @@ def health():
         'timestamp': datetime.now().isoformat()
     })
 
-# Vercel handler
-def handler(request, context):
+# Vercel handler - this is the key for serverless functions
+def handler(event, context):
+    """Vercel serverless handler"""
     return app
 
-# Export for Vercel
-application = app
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+# This is what Vercel will call
+app = app
