@@ -261,7 +261,11 @@ def health():
 # Vercel handler - this is the key for serverless functions
 def handler(event, context):
     """Vercel serverless handler"""
-    return app
+    return app.wsgi_app(event, context)
 
 # This is what Vercel will call
-app = app
+application = app
+
+# For local development
+if __name__ == '__main__':
+    app.run(debug=True)
