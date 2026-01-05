@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Smart Irrigation Decision System</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="gjs-t-body body-root">
+
+<!-- HEADER -->
+<header class="header-section">
+  <div class="header-container">
+    <h1 class="gjs-t-h1 header-title">Smart Irrigation Decision System</h1>
+    <p class="header-subtitle">ML-based irrigation recommendation and anomaly detection</p>
+    <div class="header-divider"></div>
+    <div class="header-hero-media">
+      <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1280&h=320&fit=crop" 
+           alt="Farm field aerial view" loading="eager" class="hero-image"/>
+    </div>
+  </div>
+</header>
+
+<main class="main-content">
+
+<!-- DASHBOARD STATS -->
+<section class="dashboard-stats-section">
+  <div class="stats-container">
+    <div class="stat-card stat-card-status">
+      <div class="stat-icon-wrapper stat-icon-status">
+        <img src="https://api.iconify.design/lucide-activity.svg?color=%232e7d32" alt="Activity" class="stat-icon"/>
+      </div>
+      <div class="stat-content">
+        <div class="stat-label">System Status</div>
+        <div class="stat-value" id="systemStatus">Ready</div>
+      </div>
+    </div>
+    
+    <div class="stat-card stat-card-updated">
+      <div class="stat-icon-wrapper stat-icon-updated">
+        <img src="https://api.iconify.design/lucide-clock.svg?color=%230ea5e9" alt="Clock" class="stat-icon"/>
+      </div>
+      <div class="stat-content">
+        <div class="stat-label">Last Updated</div>
+        <div class="stat-value" id="lastUpdated">--</div>
+      </div>
+    </div>
+    
+    <div class="stat-card stat-card-health">
+      <div class="stat-icon-wrapper stat-icon-health">
+        <img src="https://api.iconify.design/lucide-shield-check.svg?color=%238b5cf6" alt="Shield" class="stat-icon"/>
+      </div>
+      <div class="stat-content">
+        <div class="stat-label">Field Health</div>
+        <div class="stat-value" id="fieldHealth">Monitoring</div>
+      </div>
+    </div>
+    
+    <div class="stat-card stat-card-alerts">
+      <div class="stat-icon-wrapper stat-icon-alerts">
+        <img src="https://api.iconify.design/lucide-bell.svg?color=%23f59e0b" alt="Bell" class="stat-icon"/>
+      </div>
+      <div class="stat-content">
+        <div class="stat-label">Active Alerts</div>
+        <div class="stat-value" id="activeAlerts">0</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCENARIO PRESETS -->
+<section class="scenario-section">
+  <div class="scenario-container">
+    <h3 class="scenario-title">Quick Test Scenarios</h3>
+    <div class="scenario-buttons">
+      <button class="scenario-btn scenario-dry" onclick="loadScenario('dry')">
+        <img src="https://api.iconify.design/lucide-sun.svg?color=%23ffffff" alt="Sun" class="scenario-icon"/>
+        <span>Dry Field</span>
+      </button>
+      <button class="scenario-btn scenario-rain" onclick="loadScenario('rain')">
+        <img src="https://api.iconify.design/lucide-cloud-rain.svg?color=%23ffffff" alt="Rain" class="scenario-icon"/>
+        <span>Rain Expected</span>
+      </button>
+      <button class="scenario-btn scenario-leak" onclick="loadScenario('leak')">
+        <img src="https://api.iconify.design/lucide-alert-triangle.svg?color=%23ffffff" alt="Alert" class="scenario-icon"/>
+        <span>Anomaly Detected</span>
+      </button>
+      <button class="scenario-btn scenario-healthy" onclick="loadScenario('healthy')">
+        <img src="https://api.iconify.design/lucide-leaf.svg?color=%23ffffff" alt="Leaf" class="scenario-icon"/>
+        <span>Healthy Field</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- INPUT PANEL -->
+<section class="input-panel-section">
+  <div class="input-panel-container">
+    <div class="input-panel-layout">
+      
+      <!-- LEFT: SOIL PARAMETERS -->
+      <div class="input-panel-left-column">
+        <div class="section-header-soil">
+          <h2 class="gjs-t-h2 soil-parameters-title">Soil Parameters</h2>
+          <span class="soil-parameters-helper">Provide current field readings</span>
+        </div>
+        <div class="card-soil-parameters">
+          <div class="card-content-soil">
+            
+            <!-- Soil Moisture -->
+            <div class="form-row-moisture">
+              <img src="https://api.iconify.design/lucide-droplet.svg?color=%230f172a" alt="Droplet Icon" class="icon-moisture"/>
+              <div class="field-moisture-container">
+                <label for="soil_moisture" class="label-moisture">
+                  <span>Soil Moisture Level</span>
+                  <span id="soil_moisture_value" class="value-chip-moisture">50.0</span>
+                </label>
+                <input type="range" id="soil_moisture" name="soil_moisture" 
+                       min="40" max="65" step="0.1" value="50" 
+                       aria-describedby="soil_moisture_help" aria-required="true" 
+                       class="slider-moisture"/>
+                <div id="soil_moisture_help" class="helper-moisture">
+                  Lower values indicate drier soil. Range 40–65. Mandatory.
+                </div>
+              </div>
+            </div>
+
+            <!-- Moisture Trend -->
+            <div class="form-row-moisture-trend">
+              <img src="https://api.iconify.design/lucide-trending-up.svg?color=%230f172a" alt="Trend Icon" class="icon-trend"/>
+              <div class="field-trend-container">
+                <label for="Moisture_Trend" class="label-trend">
+                  <span>Moisture Change Rate</span>
+                  <span id="Moisture_Trend_value" class="value-chip-trend">0.0</span>
+                </label>
+                <input type="range" id="Moisture_Trend" name="Moisture_Trend" 
+                       min="-5" max="5" step="0.1" value="0" 
+                       aria-describedby="Moisture_Trend_help" 
+                       class="slider-trend"/>
+                <div id="Moisture_Trend_help" class="helper-trend">
+                  Negative means drying, positive means getting wetter. Optional.
+                </div>
+              </div>
+            </div>
+
+            <!-- Field Status -->
+            <div class="form-row-field-status">
+              <img src="https://api.iconify.design/lucide-map.svg?color=%230f172a" alt="Field Icon" class="icon-field"/>
+              <div class="field-status-container">
+                <label for="field_status" class="label-field-status">
+                  <span>Field Status</span>
+                </label>
+                <select id="field_status" name="field_status" 
+                        aria-describedby="field_status_help" 
+                        class="select-field-status">
+                  <option value="normal" selected>Normal Field</option>
+                  <option value="recently_irrigated">Recently Irrigated</option>
+                  <option value="drought_stressed">Drought Stressed</option>
+                  <option value="waterlogged">Waterlogged</option>
+                </select>
+                <div id="field_status_help" class="helper-field-status">
+                  Current field conditions. Optional.
+                </div>
+              </div>
+            </div>
+
+            <!-- Soil Temperature -->
+            <div class="form-row-soil-temp">
+              <img src="https://api.iconify.design/lucide-thermometer.svg?color=%230f172a" alt="Soil Temperature Icon" class="icon-soil-temp"/>
+              <div class="field-soil-temp-container">
+                <label for="soil_temp" class="label-soil-temp">
+                  <span>Soil Temperature</span>
+                  <span id="soil_temp_value" class="value-chip-soil-temp">18.0°C</span>
+                </label>
+                <input type="range" id="soil_temp" name="soil_temp" 
+                       min="5" max="35" step="0.5" value="18" 
+                       aria-describedby="soil_temp_help" 
+                       class="slider-soil-temp"/>
+                <div id="soil_temp_help" class="helper-soil-temp">
+                  Soil temperature affects water absorption. Optional.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: WEATHER PARAMETERS -->
+      <div class="input-panel-right-column">
+        <div class="section-header-weather">
+          <h2 class="gjs-t-h2 weather-parameters-title">Weather Parameters</h2>
+          <span class="weather-parameters-helper">Forecast-driven inputs</span>
+        </div>
+        <div class="card-weather-parameters">
+          <div class="card-content-weather">
+            
+            <!-- Precipitation -->
+            <div class="form-row-precipitation">
+              <img src="https://api.iconify.design/lucide-cloud-rain.svg?color=%230f172a" alt="Cloud Rain Icon" class="icon-rain"/>
+              <div class="field-precipitation-container">
+                <label for="Precipitation" class="label-precipitation">
+                  <span>Expected Rainfall</span>
+                  <span id="Precipitation_value" class="value-chip-precipitation">0.0 mm</span>
+                </label>
+                <input type="range" id="Precipitation" name="Precipitation" 
+                       min="0" max="10" step="0.1" value="0" 
+                       aria-describedby="Precipitation_help" aria-required="true" 
+                       class="slider-precipitation"/>
+                <div id="Precipitation_help" class="helper-precipitation">
+                  Rain suppresses irrigation decisions. Range 0–10 mm. Mandatory.
+                </div>
+              </div>
+            </div>
+
+            <!-- Weather Humidity -->
+            <div class="form-row-humidity">
+              <img src="https://api.iconify.design/lucide-droplets.svg?color=%230f172a" alt="Humidity Icon" class="icon-humidity"/>
+              <div class="field-humidity-container">
+                <label for="weather_humidity" class="label-humidity">
+                  <span>Weather Humidity</span>
+                  <span id="weather_humidity_value" class="value-chip-humidity">50%</span>
+                </label>
+                <input type="range" id="weather_humidity" name="weather_humidity" 
+                       min="10" max="100" step="1" value="50" 
+                       aria-describedby="weather_humidity_help" 
+                       class="slider-humidity"/>
+                <div id="weather_humidity_help" class="helper-humidity">
+                  Ambient relative humidity in %. Range 10–100. Optional.
+                </div>
+              </div>
+            </div>
+
+            <!-- Max Temperature -->
+            <div class="form-row-max-temp">
+              <img src="https://api.iconify.design/lucide-thermometer.svg?color=%230f172a" alt="Thermometer Icon" class="icon-temperature"/>
+              <div class="field-max-temp-container">
+                <label for="MaxT" class="label-max-temp">
+                  <span>Maximum Temperature</span>
+                  <span id="MaxT_value" class="value-chip-max-temp">30.0°C</span>
+                </label>
+                <input type="range" id="MaxT" name="MaxT" 
+                       min="10" max="45" step="0.5" value="30" 
+                       aria-describedby="MaxT_help" 
+                       class="slider-max-temp"/>
+                <div id="MaxT_help" class="helper-max-temp">
+                  Daily maximum temperature in °C. Higher temperatures increase water demand. Optional.
+                </div>
+              </div>
+            </div>
+
+            <!-- Min Temperature -->
+            <div class="form-row-min-temp">
+              <img src="https://api.iconify.design/lucide-thermometer.svg?color=%230f172a" alt="Thermometer Icon" class="icon-temperature"/>
+              <div class="field-min-temp-container">
+                <label for="MinT" class="label-min-temp">
+                  <span>Minimum Temperature</span>
+                  <span id="MinT_value" class="value-chip-min-temp">22.0°C</span>
+                </label>
+                <input type="range" id="MinT" name="MinT" 
+                       min="10" max="35" step="0.5" value="22" 
+                       aria-describedby="MinT_help" 
+                       class="slider-min-temp"/>
+                <div id="MinT_help" class="helper-min-temp">
+                  Daily minimum temperature in °C. Optional.
+                </div>
+              </div>
+            </div>
+
+            <!-- Water Sensitivity -->
+            <div class="form-row-water-sensitivity">
+              <img src="https://api.iconify.design/lucide-leaf.svg?color=%230f172a" alt="Leaf Icon" class="icon-leaf"/>
+              <div class="field-water-sensitivity-container">
+                <label for="Water_Sensitivity" class="label-water-sensitivity">
+                  <span>Crop Water Sensitivity</span>
+                </label>
+                <select id="Water_Sensitivity" name="Water_Sensitivity" 
+                        aria-describedby="Water_Sensitivity_help" 
+                        class="select-water-sensitivity">
+                  <option value="0">Low Sensitivity</option>
+                  <option value="1" selected>Medium Sensitivity</option>
+                  <option value="2">High Sensitivity</option>
+                </select>
+                <div id="Water_Sensitivity_help" class="helper-water-sensitivity">
+                  Crop's response to water stress. Optional.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="input-panel-footer">
+      <div class="input-panel-note">
+        <img src="https://api.iconify.design/lucide-info.svg?color=%230f172a" alt="Info Icon" class="icon-info"/>
+        <span>All inputs reflect the latest sensor and forecast data. Mandatory fields are required to run inference.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACTION CONTROL -->
+<section class="action-control-section">
+  <div class="action-control-container">
+    <div class="actions-group">
+      <button type="button" id="runBtn" aria-label="Run Inference" class="gjs-t-button button-run-inference">
+        <img src="https://api.iconify.design/lucide-play.svg?color=%23ffffff" alt="Run Icon" class="icon-play"/>
+        <span>Run Inference</span>
+      </button>
+      <button type="button" id="resetBtn" aria-label="Reset Inputs" class="button-reset">
+        <img src="https://api.iconify.design/lucide-refresh-ccw.svg?color=%230f172a" alt="Reset Icon" class="icon-refresh"/>
+        <span>Reset</span>
+      </button>
+      <button type="button" id="downloadBtn" aria-label="Download Payload JSON" class="button-download-json">
+        <img src="https://api.iconify.design/lucide-download.svg?color=%230f172a" alt="Download Icon" class="icon-download"/>
+        <span>Download JSON</span>
+      </button>
+    </div>
+    <div class="action-hints-group">
+      <span class="hint-mandatory">Required: Soil Moisture, Precipitation</span>
+      <span class="hint-optional">Optional: All other parameters</span>
+    </div>
+  </div>
+</section>
+
+<!-- OUTPUT PANEL -->
+<section class="output-panel-section">
+  <div class="output-panel-container">
+    <div class="output-panel-layout">
+      
+      <!-- LEFT COLUMN: RESULTS -->
+      <div class="output-left-column">
+        
+        <!-- Irrigation Decision Card -->
+        <div class="card-decision-status">
+          <div class="decision-header">
+            <h3 class="decision-title">Irrigation Decision</h3>
+            <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=420&h=120&fit=crop" 
+                 alt="Irrigation Visual" loading="lazy" class="decision-visual"/>
+          </div>
+          <div class="decision-body">
+            <span id="decisionBadge" class="decision-badge">
+              <img id="decisionIcon" src="https://api.iconify.design/lucide-help-circle.svg?color=%230f172a" 
+                   alt="Decision Icon" class="decision-icon"/>
+              <span id="decisionText">Pending</span>
+            </span>
+            <span class="decision-hint">Run inference to obtain YES/NO recommendation.</span>
+          </div>
+          <div class="confidence-section" id="decisionConfidence" style="display:none;">
+            <div class="confidence-label">
+              <span>Confidence</span>
+              <span id="decisionConfidenceValue">--%</span>
+            </div>
+            <div class="confidence-bar-bg">
+              <div id="decisionConfidenceBar" class="confidence-bar-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alert Status Card -->
+        <div class="card-alert-status">
+          <div class="alert-header">
+            <h3 class="alert-title">Alert Status</h3>
+          </div>
+          <div class="alert-body">
+            <span id="alertBadge" class="alert-badge">
+              <img id="alertIcon" src="https://api.iconify.design/lucide-shield-check.svg?color=%230f172a" 
+                   alt="Alert Icon" class="alert-icon"/>
+              <span id="alertText">NORMAL</span>
+            </span>
+            <span class="alert-hint">Anomalies appear when inputs cross learned thresholds.</span>
+          </div>
+          <div class="confidence-section" id="alertConfidence" style="display:none;">
+            <div class="confidence-label">
+              <span>Confidence</span>
+              <span id="alertConfidenceValue">--%</span>
+            </div>
+            <div class="confidence-bar-bg">
+              <div id="alertConfidenceBar" class="confidence-bar-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Water Quantity Card -->
+        <div class="card-water-quantity">
+          <div class="water-quantity-header">
+            <h3 class="water-quantity-title">Water Quantity</h3>
+          </div>
+          <div class="water-quantity-body">
+            <span id="waterQuantityBadge" class="water-quantity-badge">
+              <img id="waterQuantityIcon" src="https://api.iconify.design/lucide-droplet.svg?color=%230f172a" 
+                   alt="Water Icon" class="water-quantity-icon"/>
+              <span id="waterQuantityText">None</span>
+            </span>
+            <span class="water-quantity-hint">Amount of water to apply when irrigating.</span>
+          </div>
+        </div>
+
+        <!-- Payload Preview Card -->
+        <div class="card-payload-preview">
+          <div class="payload-header">
+            <h3 class="payload-title">Request Payload Preview</h3>
+            <span class="payload-note">Auto-updated from sliders</span>
+          </div>
+          <pre id="payloadPreview" class="payload-preformatted">{
+  "soil_moisture": 50.0,
+  "Moisture_Trend": 0.0,
+  "Precipitation": 0.0,
+  "weather_humidity": 50,
+  "MaxT": 30.0,
+  "MinT": 22.0,
+  "Water_Sensitivity": 1
+}</pre>
+        </div>
+
+        <!-- Recommended Action Card -->
+        <div class="card-recommendation" id="recommendationCard" style="display:none;">
+          <div class="recommendation-header">
+            <img src="https://api.iconify.design/lucide-lightbulb.svg?color=%232e7d32" alt="Lightbulb" class="recommendation-icon"/>
+            <h3 class="recommendation-title">Recommended Action</h3>
+          </div>
+          <div class="recommendation-body">
+            <div id="recommendationText" class="recommendation-text">
+              Run inference to see personalized recommendations.
+            </div>
+            <div id="recommendationDetails" class="recommendation-details"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: EXPLANATION -->
+      <div class="output-right-column">
+        
+        <!-- Temporal Context Card -->
+        <div class="card-temporal">
+          <div class="temporal-header">
+            <img src="https://api.iconify.design/lucide-trending-up.svg?color=%230ea5e9" alt="Trend" class="temporal-icon"/>
+            <h3 class="temporal-title">Recent Trends (24-48 hrs)</h3>
+          </div>
+          <div class="temporal-body">
+            <div class="trend-item">
+              <span class="trend-label">Soil Moisture Trend</span>
+              <span class="trend-value" id="trendMoisture">
+                <img src="https://api.iconify.design/lucide-arrow-down.svg?color=%23dc2626" alt="Down" class="trend-arrow"/>
+                Decreasing
+              </span>
+            </div>
+            <div class="trend-item">
+              <span class="trend-label">Temperature Trend</span>
+              <span class="trend-value" id="trendTemperature">
+                <img src="https://api.iconify.design/lucide-arrow-up.svg?color=%23ea580c" alt="Up" class="trend-arrow"/>
+                Increasing
+              </span>
+            </div>
+            <div class="trend-item">
+              <span class="trend-label">Rain Probability</span>
+              <span class="trend-value" id="trendRain">
+                <span class="probability-badge probability-low">Low (15%)</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Key Factors Card -->
+        <div class="card-factors">
+          <div class="factors-header">
+            <h3 class="factors-title">Key Factors Influencing Decision</h3>
+          </div>
+          <ul class="factors-grid">
+            <li class="factor-item">
+              <img src="https://api.iconify.design/lucide-droplet.svg?color=%230f172a" alt="Moisture Icon" class="factor-icon-moisture"/>
+              <div class="factor-content-moisture">
+                <div class="factor-title-moisture">Soil Moisture</div>
+                <div class="factor-desc-moisture">Primary driver; low moisture favors irrigation.</div>
+              </div>
+            </li>
+            <li class="factor-item">
+              <img src="https://api.iconify.design/lucide-cloud-rain.svg?color=%230f172a" alt="Rain Icon" class="factor-icon-rain"/>
+              <div class="factor-content-rain">
+                <div class="factor-title-rain">Precipitation</div>
+                <div class="factor-desc-rain">Rain forecast reduces irrigation likelihood.</div>
+              </div>
+            </li>
+            <li class="factor-item">
+              <img src="https://api.iconify.design/lucide-thermometer.svg?color=%230f172a" alt="Temperature Icon" class="factor-icon-temp"/>
+              <div class="factor-content-temp">
+                <div class="factor-title-temp">Max Temperature</div>
+                <div class="factor-desc-temp">Heat increases evapotranspiration and water need.</div>
+              </div>
+            </li>
+            <li class="factor-item">
+              <img src="https://api.iconify.design/lucide-droplets.svg?color=%230f172a" alt="Humidity Icon" class="factor-icon-humidity"/>
+              <div class="factor-content-humidity">
+                <div class="factor-title-humidity">Weather Humidity</div>
+                <div class="factor-desc-humidity">High humidity slows soil drying, reducing irrigation need.</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Explanation Card -->
+        <div class="card-explanation">
+          <div class="explanation-header">
+            <h3 class="explanation-title">Model Explanation</h3>
+          </div>
+          <div id="explanationContent" class="explanation-content">
+            <p>The ML model combines soil, weather, and temporal signals to output two core decisions: <strong>Irrigation Decision (YES/NO)</strong> and <strong>Alert Status (NORMAL/ALERT)</strong>. Feature importance guides transparency and aligns with agronomic best practices.</p>
+            <p>Run inference to see detailed decision reasoning and feature importance analysis.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<section class="footer-section">
+  <div class="footer-container">
+    <div class="footer-left">
+      <img src="https://api.iconify.design/lucide-check-circle.svg?color=%230f172a" alt="Check Icon" class="icon-check"/>
+      <span class="footer-text">Smart Irrigation Decision System powered by Machine Learning</span>
+    </div>
+    <div class="footer-right">
+      <span class="footer-text">v1.0</span>
+    </div>
+  </div>
+</section>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
