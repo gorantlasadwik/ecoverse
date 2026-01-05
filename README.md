@@ -31,11 +31,9 @@ The **Smart Irrigation Decision System** is a web-based application that uses ma
 ### Key Capabilities
 
 ✅ **Real-time Irrigation Recommendations** - YES/NO decisions based on current conditions  
-✅ **Water Quantity Estimation** - Precise LOW/MEDIUM/HIGH water recommendations  
 ✅ **Anomaly Detection** - Identifies unusual moisture patterns requiring attention  
 ✅ **Interactive Web Interface** - User-friendly sliders and visual feedback  
 ✅ **ML-Powered Predictions** - Trained on 13,000+ agricultural records  
-✅ **Cross-Model Validation** - Consistent predictions across multiple models  
 ✅ **Explainable AI** - Clear explanations for every decision  
 
 ---
@@ -56,12 +54,7 @@ The **Smart Irrigation Decision System** is a web-based application that uses ma
    - ✅ **IRRIGATE** - Water application recommended
    - ❌ **NO IRRIGATION** - Current moisture sufficient
 
-2. **Water Quantity Recommendation**
-   - 💧 **HIGH** - Heavy irrigation recommended (critical conditions)
-   - 🌊 **MEDIUM** - Moderate irrigation needed (standard conditions)
-   - 💧 **LOW** - Light irrigation sufficient (mild deficit)
-
-3. **Alert Status**
+2. **Alert Status**
    - 🚨 **ALERT** - Abnormal conditions detected
    - ✅ **NORMAL** - All parameters within expected ranges
 
@@ -81,23 +74,20 @@ The **Smart Irrigation Decision System** is a web-based application that uses ma
 irrigation_app/
 │
 ├── app.py                      # Flask backend server
-├── app_streamlit.py            # Streamlit alternative interface
-├── inference.py                # Core ML inference with water quantity
 ├── requirements.txt            # Python dependencies
-├── vercel.json                 # Vercel deployment configuration
 │
 ├── models/                     # ML models directory
 │   ├── train_models.py         # Model training script
-│   ├── model_A_irrigation_decision_tree.pkl    # Model A: Irrigation decisions
-│   └── model_B_alert (1).pkl   # Model B: Alert detection
+│   ├── irrigation_model.pkl    # Trained irrigation classifier
+│   ├── alert_model.pkl         # Trained alert detector
+│   └── model_info.pkl          # Model metadata
 │
 ├── data/                       # Datasets
 │   └── decision_base_extended_with_water_sensitivity_ids.csv
 │
 ├── static/                     # Frontend assets
 │   ├── style.css               # Professional styling
-│   ├── script.js               # Interactive functionality
-│   └── dashboard_enhancements.css  # Enhanced UI styling
+│   └── script.js               # Interactive functionality
 │
 ├── templates/                  # HTML templates
 │   └── index.html              # Main UI page
@@ -212,37 +202,6 @@ http://localhost:5000
 
 ---
 
-## 🚀 Deployment
-
-### Vercel Deployment
-
-The application includes a `vercel.json` configuration for easy deployment:
-
-#### 1. Push to GitHub
-```bash
-git add .
-git commit -m "Deploy Smart Irrigation System"
-git push origin main
-```
-
-#### 2. Connect to Vercel
-- Visit [vercel.com](https://vercel.com)
-- Import your GitHub repository
-- Vercel will automatically detect the Flask application
-
-#### 3. Environment Configuration
-Set environment variables in Vercel dashboard:
-```env
-PYTHON_VERSION=3.9
-```
-
-#### 4. Deploy
-Vercel will automatically build and deploy your application.
-
-**Live Demo**: [Your deployed URL will appear here]
-
----
-
 ## 💻 Usage
 
 ### Basic Workflow
@@ -354,12 +313,11 @@ Content-Type: application/json
     "irrigate": 1,
     "irrigate_label": "YES",
     "irrigate_confidence": 87.3,
-    "water_quantity": "HIGH",
     "alert": 1,
     "alert_label": "ALERT",
     "alert_confidence": 82.1
   },
-  "explanation": "💧 Irrigation recommended due to: low soil moisture (45.0%), minimal rainfall expected, high crop water sensitivity. Water quantity: HIGH (critical moisture deficit). 🚨 Alert triggered: rapid moisture loss (trend: -1.50)."
+  "explanation": "💧 Irrigation recommended due to: low soil moisture (45.0%), minimal rainfall expected, high crop water sensitivity. 🚨 Alert triggered: rapid moisture loss (trend: -1.50)."
 }
 ```
 
@@ -708,11 +666,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-**Project Maintainer**: EcoVerse Development Team
+**Project Maintainer**: Smart Irrigation Team
 
-**GitHub**: https://github.com/gorantlasadwik/ecoverse
+**Email**: support@smartirrigation.com
 
-**Repository**: Smart Irrigation Decision System
+**Website**: https://smartirrigation.com
+
+**GitHub**: https://github.com/yourusername/smart-irrigation
 
 ---
 
@@ -722,10 +682,10 @@ If you use this system in your research, please cite:
 
 ```bibtex
 @software{smart_irrigation_2026,
-  title={Smart Irrigation Decision System with Water Quantity Estimation},
-  author={EcoVerse Development Team},
+  title={Smart Irrigation Decision System},
+  author={Smart Irrigation Team},
   year={2026},
-  url={https://github.com/gorantlasadwik/ecoverse}
+  url={https://github.com/yourusername/smart-irrigation}
 }
 ```
 
