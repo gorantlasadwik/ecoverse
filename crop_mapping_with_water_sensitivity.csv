@@ -1,0 +1,56 @@
+Crop_Name,Encoded_Value,Water_Sensitivity
+Arecanut,0,0
+Arhar/Tur,1,1
+Bajra,2,1
+Banana,3,2
+Barley,4,1
+Black pepper,5,0
+Cardamom,6,0
+Cashewnut,7,0
+Castor seed,8,1
+Coconut,9,2
+Coriander,10,0
+Cotton(lint),11,1
+Cowpea(Lobia),12,1
+Dry chillies,13,0
+Garlic,14,0
+Ginger,15,0
+Gram,16,1
+Groundnut,17,1
+Guar seed,18,1
+Horse-gram,19,1
+Jowar,20,1
+Jute,21,2
+Khesari,22,1
+Linseed,23,1
+Maize,24,1
+Masoor,25,1
+Mesta,26,1
+Moong(Green Gram),27,1
+Moth,28,1
+Niger seed,29,1
+Oilseeds total,30,1
+Onion,31,0
+Other Rabi pulses,32,1
+Other Cereals,33,1
+Other Kharif pulses,34,1
+Other Summer Pulses,35,1
+Peas & beans (Pulses),36,1
+Potato,37,2
+Ragi,38,1
+Rapeseed &Mustard,39,1
+Rice,40,2
+Safflower,41,1
+Sannhamp,42,1
+Sesamum,43,1
+Small millets,44,1
+Soyabean,45,1
+Sugarcane,46,2
+Sunflower,47,1
+Sweet potato,48,2
+Tapioca,49,2
+Tobacco,50,0
+Turmeric,51,0
+Urad,52,1
+Wheat,53,1
+other oilseeds,54,1
