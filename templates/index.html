@@ -9,24 +9,16 @@
 </head>
 <body class="gjs-t-body body-root">
 
-<!-- HEADER -->
-<header class="header-section">
+<!-- HEADER WITH STATS -->
+<header class="header-section" style="background-image: url('https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1920&h=600&fit=crop');">
+  <div class="header-overlay"></div>
   <div class="header-container">
     <h1 class="gjs-t-h1 header-title">Smart Irrigation Decision System</h1>
     <p class="header-subtitle">ML-based irrigation recommendation and anomaly detection</p>
-    <div class="header-divider"></div>
-    <div class="header-hero-media">
-      <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1280&h=320&fit=crop" 
-           alt="Farm field aerial view" loading="eager" class="hero-image"/>
-    </div>
   </div>
-</header>
-
-<main class="main-content">
-
-<!-- DASHBOARD STATS -->
-<section class="dashboard-stats-section">
-  <div class="stats-container">
+  
+  <!-- DASHBOARD STATS - Inside Header -->
+  <div class="stats-container header-stats">
     <div class="stat-card stat-card-status">
       <div class="stat-icon-wrapper stat-icon-status">
         <img src="https://api.iconify.design/lucide-activity.svg?color=%232e7d32" alt="Activity" class="stat-icon"/>
@@ -67,45 +59,338 @@
       </div>
     </div>
   </div>
-</section>
+</header>
+
+<main class="main-content">
 
 <!-- SCENARIO PRESETS -->
 <section class="scenario-section">
   <div class="scenario-container">
-    <h3 class="scenario-title">Quick Test Scenarios</h3>
-    <div class="scenario-buttons">
-      <button class="scenario-btn scenario-dry" onclick="loadScenario('dry')">
-        <img src="https://api.iconify.design/lucide-sun.svg?color=%23ffffff" alt="Sun" class="scenario-icon"/>
-        <span>Dry Field</span>
-      </button>
-      <button class="scenario-btn scenario-rain" onclick="loadScenario('rain')">
-        <img src="https://api.iconify.design/lucide-cloud-rain.svg?color=%23ffffff" alt="Rain" class="scenario-icon"/>
-        <span>Rain Expected</span>
-      </button>
-      <button class="scenario-btn scenario-leak" onclick="loadScenario('leak')">
-        <img src="https://api.iconify.design/lucide-alert-triangle.svg?color=%23ffffff" alt="Alert" class="scenario-icon"/>
-        <span>Anomaly Detected</span>
-      </button>
-      <button class="scenario-btn scenario-healthy" onclick="loadScenario('healthy')">
-        <img src="https://api.iconify.design/lucide-leaf.svg?color=%23ffffff" alt="Leaf" class="scenario-icon"/>
-        <span>Healthy Field</span>
-      </button>
+    
+    <!-- Header with Title and Weather Card side by side -->
+    <div class="scenario-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 20px;">
+      <h3 class="scenario-title" style="margin: 0;">Data Input Mode</h3>
+      
+      <!-- Weather Card - Inline beside title -->
+      <div id="weatherCardSection" class="weather-card-section">
+        <div class="cardm">
+          <div class="card">
+            <svg class="weather" version="1.1" xmlns="http://www.w3.org/2000/svg" width="60px" height="60px" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="22" fill="#FFD700" opacity="0.95"/>
+              <g fill="none" stroke="#FFD700" stroke-width="4" stroke-linecap="round">
+                <line x1="50" y1="12" x2="50" y2="22"/>
+                <line x1="50" y1="78" x2="50" y2="88"/>
+                <line x1="12" y1="50" x2="22" y2="50"/>
+                <line x1="78" y1="50" x2="88" y2="50"/>
+                <line x1="23" y1="23" x2="30" y2="30"/>
+                <line x1="70" y1="70" x2="77" y2="77"/>
+                <line x1="23" y1="77" x2="30" y2="70"/>
+                <line x1="70" y1="30" x2="77" y2="23"/>
+              </g>
+            </svg>
+            <div class="main" id="weatherMainTemp">--°C</div>
+            <div class="mainsub" id="weatherLocation">Enter location to fetch</div>
+          </div>
+
+          <div class="card2">
+            <div class="upper">
+              <div class="humidity">
+                <svg class="humiditysvg" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="15" cy="18" r="8" fill="#3b82f6" opacity="0.2"/>
+                  <path d="M15 4 C15 4 8 12 8 18 C8 22 11 26 15 26 C19 26 22 22 22 18 C22 12 15 4 15 4Z" fill="#3b82f6"/>
+                </svg>
+                <div class="humiditytext">Humidity<br><span id="weatherHumidity">--%</span></div>
+              </div>
+              <div class="air">
+                <svg class="airsvg" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 10 H20 Q25 10 25 15 Q25 20 20 20 H10" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round"/>
+                  <path d="M8 15 H22 Q26 15 26 18 Q26 22 22 22" stroke="#60a5fa" stroke-width="2" fill="none" stroke-linecap="round"/>
+                </svg>
+                <div class="airtext">Rain<br><span id="weatherPrecipitation">--mm</span></div>
+              </div>
+            </div>
+
+            <div class="lower">
+              <div class="aqi">
+                <svg class="aqisvg" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 2 L10 10 L16 10" stroke="#10b981" stroke-width="2" fill="none" stroke-linecap="round"/>
+                  <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2" fill="none"/>
+                </svg>
+                <div class="aqitext">Min<br><span id="weatherMinTemp">--°C</span></div>
+              </div>
+              <div class="realfeel">
+                <svg class="rfsvg" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="8" y="2" width="4" height="14" rx="2" fill="#ef4444"/>
+                  <circle cx="10" cy="16" r="3" fill="#ef4444"/>
+                </svg>
+                <div class="realfeeltext">Max<br><span id="weatherMaxTemp">--°C</span></div>
+              </div>
+              <div class="pressure">
+                <svg class="pressuresvg" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="10" cy="12" r="6" fill="#8b5cf6" opacity="0.2"/>
+                  <path d="M10 4 C10 4 6 8 6 12 C6 15 8 18 10 18 C12 18 14 15 14 12 C14 8 10 4 10 4Z" fill="#8b5cf6"/>
+                </svg>
+                <div class="pressuretext">Soil<br><span id="weatherSoilMoisture">--%</span></div>
+              </div>
+              <div class="card3" id="weatherStatusBadge">
+                <span id="weatherStatusText">Ready</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+    
+    <!-- Mode Toggle with Sliding Animation -->
+    <div class="mode-toggle-wrapper">
+      <div id="modeToggleSlider" class="mode-toggle-slider">
+        <!-- Sliding Background -->
+        <div class="slider-bg"></div>
+        
+        <!-- Manual Input Button -->
+        <button id="manualModeBtn" class="mode-toggle-btn active" onclick="switchModeAnimated('manual')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          <span>Manual Input</span>
+        </button>
+        
+        <!-- Auto-Fetch Button -->
+        <button id="autoModeBtn" class="mode-toggle-btn" onclick="switchModeAnimated('auto')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <span>Auto-Fetch by Location</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Manual Mode: Quick Test Scenarios -->
+    <div id="manualModeContent">
+      <h4 class="scenario-title">Quick Test Scenarios</h4>
+      <div class="scenario-buttons-new" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center;">
+        <!-- Dry Field Button -->
+        <button 
+          onclick="loadScenario('dry')"
+          class="scenario-btn-new"
+          style="cursor: pointer; background: white; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-size: 14px; font-weight: 500; padding: 10px 16px; border: 1px solid #e2e8f0; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"
+          onmouseover="this.style.background='#FEF2F2'; this.style.color='#DC2626'; this.style.borderColor='#FECACA'; this.querySelector('.btn-text').style.transform='scale(1)'; this.querySelector('.btn-text').style.opacity='1';"
+          onmouseout="this.style.background='white'; this.style.color='#0f172a'; this.style.borderColor='#e2e8f0'; this.querySelector('.btn-text').style.transform='scale(0.95)'; this.querySelector('.btn-text').style.opacity='0.9';"
+        >
+          <svg class="scenario-icon-new" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#DC2626" fill="none" viewBox="0 0 24 24" height="22" width="22" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+          <span class="btn-text" style="transition: all 0.2s ease; transform: scale(0.95); opacity: 0.9;">Dry Field</span>
+        </button>
+
+        <!-- Rain Expected Button -->
+        <button 
+          onclick="loadScenario('rain')"
+          class="scenario-btn-new"
+          style="cursor: pointer; background: white; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-size: 14px; font-weight: 500; padding: 10px 16px; border: 1px solid #e2e8f0; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"
+          onmouseover="this.style.background='#EFF6FF'; this.style.color='#2563EB'; this.style.borderColor='#BFDBFE'; this.querySelector('.btn-text').style.transform='scale(1)'; this.querySelector('.btn-text').style.opacity='1';"
+          onmouseout="this.style.background='white'; this.style.color='#0f172a'; this.style.borderColor='#e2e8f0'; this.querySelector('.btn-text').style.transform='scale(0.95)'; this.querySelector('.btn-text').style.opacity='0.9';"
+        >
+          <svg class="scenario-icon-new" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#2563EB" fill="none" viewBox="0 0 24 24" height="22" width="22" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+            <path d="M16 14v6"></path>
+            <path d="M8 14v6"></path>
+            <path d="M12 16v6"></path>
+          </svg>
+          <span class="btn-text" style="transition: all 0.2s ease; transform: scale(0.95); opacity: 0.9;">Rain Expected</span>
+        </button>
+
+        <!-- Anomaly Detected Button -->
+        <button 
+          onclick="loadScenario('leak')"
+          class="scenario-btn-new"
+          style="cursor: pointer; background: white; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-size: 14px; font-weight: 500; padding: 10px 16px; border: 1px solid #e2e8f0; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"
+          onmouseover="this.style.background='#FFFBEB'; this.style.color='#D97706'; this.style.borderColor='#FDE68A'; this.querySelector('.btn-text').style.transform='scale(1)'; this.querySelector('.btn-text').style.opacity='1';"
+          onmouseout="this.style.background='white'; this.style.color='#0f172a'; this.style.borderColor='#e2e8f0'; this.querySelector('.btn-text').style.transform='scale(0.95)'; this.querySelector('.btn-text').style.opacity='0.9';"
+        >
+          <svg class="scenario-icon-new" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#D97706" fill="none" viewBox="0 0 24 24" height="22" width="22" xmlns="http://www.w3.org/2000/svg">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <path d="M12 9v4"></path>
+            <path d="M12 17h.01"></path>
+          </svg>
+          <span class="btn-text" style="transition: all 0.2s ease; transform: scale(0.95); opacity: 0.9;">Anomaly Detected</span>
+        </button>
+
+        <!-- Healthy Field Button -->
+        <button 
+          onclick="loadScenario('healthy')"
+          class="scenario-btn-new"
+          style="cursor: pointer; background: white; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-size: 14px; font-weight: 500; padding: 10px 16px; border: 1px solid #e2e8f0; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"
+          onmouseover="this.style.background='#ECFDF5'; this.style.color='#059669'; this.style.borderColor='#A7F3D0'; this.querySelector('.btn-text').style.transform='scale(1)'; this.querySelector('.btn-text').style.opacity='1';"
+          onmouseout="this.style.background='white'; this.style.color='#0f172a'; this.style.borderColor='#e2e8f0'; this.querySelector('.btn-text').style.transform='scale(0.95)'; this.querySelector('.btn-text').style.opacity='0.9';"
+        >
+          <svg class="scenario-icon-new" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#059669" fill="none" viewBox="0 0 24 24" height="22" width="22" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
+            <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+          </svg>
+          <span class="btn-text" style="transition: all 0.2s ease; transform: scale(0.95); opacity: 0.9;">Healthy Field</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Auto Mode: Location-based Input -->
+    <div id="autoModeContent" style="display: none;">
+      <div style="display: flex; justify-content: center; padding: 0 20px;">
+        <div class="location-form-box" style="background-color: rgb(241, 241, 130); padding: 40px 50px; border-radius: 20px; box-shadow: 6px 6px rgb(0, 2, 65); font-family: 'Inter', sans-serif; max-width: 100%; width: 100%;">
+          
+          <h4 style="font-size: 24px; text-align: center; font-weight: 700; margin-bottom: 30px; color: #0f172a;">🌍 Automatic Data Fetching</h4>
+          
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            
+            <!-- Location Input -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="font-size: 15px; font-weight: 600; color: #0f172a;">📍 Location (City, State, Country)</label>
+                <button 
+                  id="useMyLocationBtn" 
+                  onclick="requestGeolocation()"
+                  style="padding: 6px 12px; background-color: rgb(241, 241, 130); border: 2px solid rgb(0, 2, 65); border-radius: 8px; color: #0f172a; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600; transition: all 0.3s; box-shadow: 2px 2px rgb(0, 2, 65);"
+                  onmouseover="this.style.backgroundColor='rgb(235, 255, 59)'; this.style.transform='translateY(-1px)';"
+                  onmouseout="this.style.backgroundColor='rgb(241, 241, 130)'; this.style.transform='translateY(0)';"
+                >
+                  <img src="https://api.iconify.design/lucide-crosshair.svg?color=%230f172a" style="width: 14px; height: 14px;" />
+                  Use My Location
+                </button>
+              </div>
+              <div style="position: relative;">
+                <input 
+                  type="text" 
+                  id="locationInput" 
+                  placeholder="e.g., Pune, Maharashtra, India"
+                  autocomplete="off"
+                  style="width: 100%; padding: 12px 16px; border: 2px solid rgb(0, 2, 65); border-radius: 10px; font-size: 15px; background: #fff; box-shadow: 3px 3px rgb(0, 2, 65); font-weight: 500;"
+                  oninput="handleLocationInput()"
+                  onkeydown="handleLocationKeydown(event)"
+                />
+                <!-- Autocomplete dropdown -->
+                <div 
+                  id="locationSuggestions" 
+                  style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid rgb(0, 2, 65); border-top: none; border-radius: 0 0 10px 10px; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: -5px; box-shadow: 3px 3px rgb(0, 2, 65);">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Crop Type Dropdown -->
+            <div>
+              <label style="font-size: 15px; font-weight: 600; color: #0f172a; display: block; margin-bottom: 8px;">🌾 Crop Type</label>
+              <select 
+                id="cropTypeSelect" 
+                style="width: 100%; padding: 12px 16px; border: 2px solid rgb(0, 2, 65); border-radius: 10px; font-size: 15px; background: #fff; cursor: pointer; box-shadow: 3px 3px rgb(0, 2, 65); font-weight: 500;"
+              >
+                <optgroup label="🔴 High Water Sensitivity">
+                  <option value="rice">Rice (Paddy)</option>
+                  <option value="sugarcane">Sugarcane</option>
+                  <option value="banana">Banana</option>
+                  <option value="tomato">Tomato</option>
+                  <option value="potato">Potato</option>
+                  <option value="cucumber">Cucumber</option>
+                </optgroup>
+                <optgroup label="🟡 Medium Water Sensitivity">
+                  <option value="wheat" selected>Wheat</option>
+                  <option value="maize">Maize (Corn)</option>
+                  <option value="cotton">Cotton</option>
+                  <option value="soybean">Soybean</option>
+                  <option value="sunflower">Sunflower</option>
+                  <option value="onion">Onion</option>
+                </optgroup>
+                <optgroup label="🟢 Low Water Sensitivity (Drought-Tolerant)">
+                  <option value="sorghum">Sorghum (Jowar)</option>
+                  <option value="millet">Pearl Millet (Bajra)</option>
+                  <option value="chickpea">Chickpea (Chana)</option>
+                  <option value="groundnut">Groundnut (Peanut)</option>
+                  <option value="pigeon_pea">Pigeon Pea (Tur)</option>
+                </optgroup>
+              </select>
+            </div>
+            
+            <!-- Fetch Button -->
+            <button 
+              id="fetchDataBtn" 
+              onclick="fetchDataByLocation()"
+              style="padding: 14px 28px; background-color: rgb(241, 241, 130); color: #0f172a; border: 2px solid rgb(0, 2, 65); border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 3px 4px rgb(0, 2, 65); transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px;"
+              onmouseover="this.style.backgroundColor='rgb(235, 255, 59)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='4px 5px rgb(0, 2, 65)';"
+              onmouseout="this.style.backgroundColor='rgb(241, 241, 130)'; this.style.transform='translateY(0)'; this.style.boxShadow='3px 4px rgb(0, 2, 65)';"
+            >
+              <img src="https://api.iconify.design/lucide-download-cloud.svg?color=%230f172a" alt="Fetch" style="width: 22px; height: 22px;"/>
+              <span>Fetch Real-Time Data</span>
+            </button>
+            
+            <!-- Status Message -->
+            <div id="fetchStatus" style="display: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; border: 2px solid rgb(0, 2, 65);"></div>
+            
+          </div>
+          
+          <!-- Data Sources Display -->
+          <div id="dataSourcesDisplay" style="display: none; margin-top: 20px; padding: 16px; background: rgba(255,255,255,0.6); border-radius: 10px; border: 2px solid rgb(0, 2, 65); box-shadow: 2px 2px rgb(0, 2, 65);">
+            <p style="color: #0f172a; font-weight: 700; margin-bottom: 10px; font-size: 14px;">📊 Data Sources:</p>
+            <div id="dataSourcesList" style="color: #334155; font-size: 13px; line-height: 1.8; font-weight: 500;"></div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<!-- Loading Overlay Animation -->
+<div id="loadingOverlay" class="loading-overlay">
+  <div id="wifi-loader">
+    <svg class="circle-outer" viewBox="0 0 86 86">
+      <circle class="back" cx="43" cy="43" r="40"></circle>
+      <circle class="front" cx="43" cy="43" r="40"></circle>
+      <circle class="new" cx="43" cy="43" r="40"></circle>
+    </svg>
+    <svg class="circle-middle" viewBox="0 0 60 60">
+      <circle class="back" cx="30" cy="30" r="27"></circle>
+      <circle class="front" cx="30" cy="30" r="27"></circle>
+    </svg>
+    <svg class="circle-inner" viewBox="0 0 34 34">
+      <circle class="back" cx="17" cy="17" r="14"></circle>
+      <circle class="front" cx="17" cy="17" r="14"></circle>
+    </svg>
+    <div class="text" data-text="Fetching Data..."></div>
+  </div>
+</div>
+
+<!-- INPUT PANEL -->
+          <div id="dataSourcesList" style="color: rgba(255,255,255,0.9); font-size: 13px; line-height: 1.8;"></div>
+        </div>
+        
+      </div>
+    </div>
+    
   </div>
 </section>
 
 <!-- INPUT PANEL -->
 <section class="input-panel-section">
   <div class="input-panel-container">
-    <div class="input-panel-layout">
-      
-      <!-- LEFT: SOIL PARAMETERS -->
-      <div class="input-panel-left-column">
-        <div class="section-header-soil">
-          <h2 class="gjs-t-h2 soil-parameters-title">Soil Parameters</h2>
-          <span class="soil-parameters-helper">Provide current field readings</span>
-        </div>
-        <div class="card-soil-parameters">
+    <!-- Single merged yellow box -->
+    <div class="card-parameters-merged">
+      <div class="input-panel-layout">
+        
+        <!-- LEFT: SOIL PARAMETERS -->
+        <div class="input-panel-left-column">
+          <div class="section-header-soil">
+            <h2 class="gjs-t-h2 soil-parameters-title">Soil Parameters</h2>
+            <span class="soil-parameters-helper">Provide current field readings</span>
+          </div>
           <div class="card-content-soil">
             
             <!-- Soil Moisture -->
@@ -185,15 +470,13 @@
 
           </div>
         </div>
-      </div>
 
-      <!-- RIGHT: WEATHER PARAMETERS -->
-      <div class="input-panel-right-column">
-        <div class="section-header-weather">
-          <h2 class="gjs-t-h2 weather-parameters-title">Weather Parameters</h2>
-          <span class="weather-parameters-helper">Forecast-driven inputs</span>
-        </div>
-        <div class="card-weather-parameters">
+        <!-- RIGHT: WEATHER PARAMETERS -->
+        <div class="input-panel-right-column">
+          <div class="section-header-weather">
+            <h2 class="gjs-t-h2 weather-parameters-title">Weather Parameters</h2>
+            <span class="weather-parameters-helper">Forecast-driven inputs</span>
+          </div>
           <div class="card-content-weather">
             
             <!-- Precipitation -->
@@ -290,8 +573,8 @@
 
           </div>
         </div>
-      </div>
 
+      </div>
     </div>
 
     <div class="input-panel-footer">
@@ -307,22 +590,64 @@
 <section class="action-control-section">
   <div class="action-control-container">
     <div class="actions-group">
-      <button type="button" id="runBtn" aria-label="Run Inference" class="gjs-t-button button-run-inference">
-        <img src="https://api.iconify.design/lucide-play.svg?color=%23ffffff" alt="Run Icon" class="icon-play"/>
-        <span>Run Inference</span>
+      <button type="button" id="runBtn" aria-label="Run Inference" class="button-run-animated">
+        <span class="circle1"></span>
+        <span class="circle2"></span>
+        <span class="circle3"></span>
+        <span class="circle4"></span>
+        <span class="circle5"></span>
+        <span class="btn-text-animated">▶ Run Inference</span>
+        <span class="btn-loading">
+          <svg class="loading-spinner" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+        </span>
+        <span class="btn-done">✓ Done!</span>
       </button>
-      <button type="button" id="resetBtn" aria-label="Reset Inputs" class="button-reset">
-        <img src="https://api.iconify.design/lucide-refresh-ccw.svg?color=%230f172a" alt="Reset Icon" class="icon-refresh"/>
-        <span>Reset</span>
+      <button type="button" id="resetBtn" aria-label="Reset Inputs" class="button-reset-animated">
+        <svg class="reset-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        <span class="reset-now">Done!</span>
+        <span class="reset-text">Reset</span>
       </button>
-      <button type="button" id="downloadBtn" aria-label="Download Payload JSON" class="button-download-json">
-        <img src="https://api.iconify.design/lucide-download.svg?color=%230f172a" alt="Download Icon" class="icon-download"/>
-        <span>Download JSON</span>
-      </button>
+      <div class="button-download-animated" id="downloadBtn" data-tooltip="Download JSON">
+        <div class="button-wrapper">
+          <div class="text">Download</div>
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="2em" height="2em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15V3m0 12l-4-4m4 4l4-4M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"></path></svg>
+          </span>
+        </div>
+      </div>
     </div>
     <div class="action-hints-group">
-      <span class="hint-mandatory">Required: Soil Moisture, Precipitation</span>
-      <span class="hint-optional">Optional: All other parameters</span>
+      <div class="hint-card hint-mandatory">
+        <div class="hint-card-title">
+          <span class="hint-icon hint-icon-required">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+            </svg>
+          </span>
+          <p class="hint-card-label">Required</p>
+        </div>
+        <div class="hint-card-data">
+          <p>Soil Moisture, Precipitation</p>
+        </div>
+      </div>
+      <div class="hint-card hint-optional">
+        <div class="hint-card-title">
+          <span class="hint-icon hint-icon-optional">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+          </span>
+          <p class="hint-card-label">Optional</p>
+        </div>
+        <div class="hint-card-data">
+          <p>All other parameters</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
