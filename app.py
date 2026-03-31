@@ -3,6 +3,8 @@ Smart Irrigation System - Flask Backend
 ========================================
 Real-time irrigation recommendations using trained ML models
 Uses inference.py for all ML logic (clean separation)
+ENHANCED: Automatic data fetching from location-based APIs
+PRODUCTION: Includes keep-alive for Render deployment
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -11,16 +13,37 @@ import pandas as pd
 import os
 from datetime import datetime
 import logging
+import threading
+import time
+import requests as http_requests
 
-# Configure logging for model connections
+# Configure logging FIRST (before any imports that use it)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Import location-based services
+LOCATION_SERVICE_ENABLED = False
+location_service = None
+
+try:
+    from location_service import LocationService
+    from crop_sensitivity import get_crop_info, get_all_crops_by_sensitivity, search_crops
+    location_service = LocationService()
+    LOCATION_SERVICE_ENABLED = True
+    logger.info("✅ Location-based auto-fetch ENABLED")
+except ImportError as e:
+    logger.warning(f"⚠️ Location service disabled: {e}")
+    logger.warning("Run: pip install geopy requests")
+except Exception as e:
+    logger.error(f"❌ Error initializing location service: {e}")
+    logger.warning("Location service will be disabled")
 
 app = Flask(__name__)
 
 print("🌱 Smart Irrigation System - Flask Backend")
 print("✅ Using enhanced inference.py for integrated ML logic")
 print("🔗 Model A & B connection: ACTIVE")
+print(f"📍 Location-based auto-fetch: {'ENABLED' if LOCATION_SERVICE_ENABLED else 'DISABLED'}")
 
 # ============================================
 # VALIDATION RANGES
@@ -90,6 +113,418 @@ def generate_explanation(input_data, irrigate, alert, water_quantity=None):
         explanations.append("✅ All parameters within normal ranges.")
     
     return " ".join(explanations)
+
+
+# ============================================
+# LOCATION-BASED AUTO-FETCH ENDPOINTS
+# ============================================
+
+@app.route('/api/geocode-reverse', methods=['POST'])
+def geocode_reverse():
+    """
+    Reverse geocode coordinates to location name
+    Request: {'latitude': 28.6139, 'longitude': 77.2090}
+    """
+    if not LOCATION_SERVICE_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Location service not available'
+        }), 503
+    
+    try:
+        data = request.get_json()
+        latitude = float(data.get('latitude'))
+        longitude = float(data.get('longitude'))
+        
+        logger.info(f"🔄 Reverse geocoding: {latitude}, {longitude}")
+        
+        # Use geopy to reverse geocode
+        from geopy.geocoders import Nominatim
+        from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+        
+        geolocator = Nominatim(
+            user_agent="smart-irrigation-app-v2",
+            timeout=15
+        )
+        
+        try:
+            location = geolocator.reverse(
+                f"{latitude}, {longitude}",
+                exactly_one=True,
+                language='en'
+            )
+            
+            if location and location.address:
+                logger.info(f"✅ Reverse geocoded to: {location.address}")
+                return jsonify({
+                    'success': True,
+                    'location': location.address,
+                    'coordinates': {
+                        'latitude': latitude,
+                        'longitude': longitude
+                    }
+                }), 200
+            else:
+                logger.warning("No location found for coordinates")
+                return jsonify({
+                    'success': False,
+                    'error': 'No location found for these coordinates'
+                }), 404
+                
+        except GeocoderTimedOut:
+            logger.error("Geocoder timed out")
+            return jsonify({
+                'success': False,
+                'error': 'Location service timed out. Please try again.'
+            }), 408
+            
+        except GeocoderServiceError as e:
+            logger.error(f"Geocoder service error: {e}")
+            return jsonify({
+                'success': False,
+                'error': 'Location service temporarily unavailable. Please enter location manually.'
+            }), 503
+            
+    except ValueError as e:
+        logger.error(f"Invalid coordinates: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Invalid coordinates provided'
+        }), 400
+        
+    except Exception as e:
+        logger.error(f"Error in reverse geocoding: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Could not determine location: {str(e)}'
+        }), 500
+
+
+@app.route('/api/location-suggestions', methods=['GET'])
+def location_suggestions():
+    """
+    Get location suggestions for autocomplete
+    Request: GET /api/location-suggestions?q=pune
+    """
+    if not LOCATION_SERVICE_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Location service not available'
+        }), 503
+    
+    try:
+        query = request.args.get('q', '')
+        
+        if len(query) < 3:
+            return jsonify({
+                'success': True,
+                'suggestions': []
+            }), 200
+        
+        # Use geopy to get suggestions
+        from geopy.geocoders import Nominatim
+        geolocator = Nominatim(user_agent="smart-irrigation-app")
+        
+        # Search for locations
+        locations = geolocator.geocode(query, exactly_one=False, limit=5, timeout=10)
+        
+        suggestions = []
+        if locations:
+            for loc in locations:
+                suggestions.append({
+                    'name': loc.address,
+                    'latitude': loc.latitude,
+                    'longitude': loc.longitude
+                })
+        
+        return jsonify({
+            'success': True,
+            'suggestions': suggestions
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting location suggestions: {e}")
+        return jsonify({
+            'success': True,
+            'suggestions': []
+        }), 200
+
+
+@app.route('/api/fetch-data-by-location', methods=['POST'])
+def fetch_data_by_location():
+    """
+    Fetch all required data automatically based on location name
+    Request: {'location': 'City, State, Country', 'crop_type': 'wheat'}
+    """
+    logger.info(f"🔍 fetch-data-by-location called. LOCATION_SERVICE_ENABLED={LOCATION_SERVICE_ENABLED}, location_service={location_service}")
+    
+    if not LOCATION_SERVICE_ENABLED or location_service is None:
+        logger.error(f"Location service not available. ENABLED={LOCATION_SERVICE_ENABLED}, service={location_service}")
+        return jsonify({
+            'success': False,
+            'error': 'Location service not available. Install required packages: pip install geopy'
+        }), 503
+    
+    try:
+        data = request.get_json()
+        location_name = data.get('location')
+        crop_type = data.get('crop_type', 'wheat')
+        
+        if not location_name:
+            return jsonify({
+                'success': False,
+                'error': 'location is required'
+            }), 400
+        
+        logger.info(f"📍 Fetching data for location: {location_name}, crop: {crop_type}")
+        
+        # Fetch all data
+        result = location_service.fetch_all_data_by_location_name(location_name, crop_type)
+        
+        if not result:
+            return jsonify({
+                'success': False,
+                'error': f'Could not fetch data for location: {location_name}'
+            }), 404
+        
+        # Get ML-ready input
+        ml_input = location_service.get_ml_ready_input(result)
+        
+        return jsonify({
+            'success': True,
+            'location': result['location'],
+            'coordinates': result['coordinates'],
+            'crop_type': result['crop_type'],
+            'data': ml_input,
+            'data_sources': result['data_sources'],
+            'message': 'Data fetched successfully from APIs'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in fetch_data_by_location: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/fetch-data-by-coordinates', methods=['POST'])
+def fetch_data_by_coordinates():
+    """
+    Fetch all required data automatically based on coordinates
+    Request: {'latitude': 28.6139, 'longitude': 77.2090, 'crop_type': 'wheat', 'location_name': 'My Farm'}
+    """
+    if not LOCATION_SERVICE_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Location service not available'
+        }), 503
+    
+    try:
+        data = request.get_json()
+        latitude = float(data.get('latitude'))
+        longitude = float(data.get('longitude'))
+        crop_type = data.get('crop_type', 'wheat')
+        location_name = data.get('location_name', 'Field')
+        
+        if latitude is None or longitude is None:
+            return jsonify({
+                'success': False,
+                'error': 'latitude and longitude are required'
+            }), 400
+        
+        logger.info(f"📍 Fetching data for coordinates: ({latitude}, {longitude}), crop: {crop_type}")
+        
+        # Fetch all data
+        result = location_service.fetch_all_data_by_coordinates(
+            latitude, longitude, crop_type, location_name
+        )
+        
+        # Get ML-ready input
+        ml_input = location_service.get_ml_ready_input(result)
+        
+        return jsonify({
+            'success': True,
+            'location': result['location'],
+            'coordinates': result['coordinates'],
+            'crop_type': result['crop_type'],
+            'data': ml_input,
+            'data_sources': result['data_sources'],
+            'message': 'Data fetched successfully from APIs'
+        }), 200
+        
+    except ValueError as ve:
+        return jsonify({
+            'success': False,
+            'error': f'Invalid coordinates: {str(ve)}'
+        }), 400
+    except Exception as e:
+        logger.error(f"Error in fetch_data_by_coordinates: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/predict-with-location', methods=['POST'])
+def predict_with_location():
+    """
+    Fetch data by location AND run ML prediction in one call
+    Request: {'location': 'City, State', 'crop_type': 'wheat'}
+    """
+    if not LOCATION_SERVICE_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Location service not available'
+        }), 503
+    
+    try:
+        data = request.get_json()
+        location_name = data.get('location')
+        crop_type = data.get('crop_type', 'wheat')
+        
+        if not location_name:
+            return jsonify({
+                'success': False,
+                'error': 'location is required'
+            }), 400
+        
+        logger.info(f"📍 Auto-fetch + predict for: {location_name}, crop: {crop_type}")
+        
+        # Step 1: Fetch all data
+        location_data = location_service.fetch_all_data_by_location_name(location_name, crop_type)
+        
+        if not location_data:
+            return jsonify({
+                'success': False,
+                'error': f'Could not fetch data for location: {location_name}'
+            }), 404
+        
+        # Step 2: Get ML input
+        ml_input = location_service.get_ml_ready_input(location_data)
+        
+        # Step 3: Run ML inference
+        prediction_result = run_inference(ml_input)
+        
+        # Step 4: Get detailed results
+        detailed_result = integrated_model_prediction(ml_input)
+        
+        # Step 5: Generate explanation
+        irrigate = prediction_result['Irrigate']
+        alert = prediction_result['Alert']
+        water_quantity = prediction_result.get('Water_Quantity', 'None')
+        explanation = generate_explanation(ml_input, irrigate, alert, water_quantity)
+        
+        # Prepare comprehensive response
+        response = {
+            'success': True,
+            'location_info': {
+                'name': location_data['location'],
+                'coordinates': location_data['coordinates'],
+                'crop_type': location_data['crop_type']
+            },
+            'fetched_data': ml_input,
+            'data_sources': location_data['data_sources'],
+            'irrigation': {
+                'decision': 'YES' if irrigate == 1 else 'NO',
+                'confidence': detailed_result['Confidence']['irrigation'],
+                'explanation': explanation.split('✅')[0].strip(),
+                'water_quantity': water_quantity
+            },
+            'alert': {
+                'decision': 'ALERT' if alert == 1 else 'NORMAL',
+                'confidence': detailed_result['Confidence']['alert'],
+                'explanation': explanation.split('✅')[-1].strip() if '✅' in explanation else 'Normal conditions'
+            },
+            'key_factors': [
+                {'feature': 'soil_moisture', 'value': f"{ml_input['soil_moisture']:.1f}%", 'source': location_data['data_sources'].get('soil', 'N/A')},
+                {'feature': 'Precipitation', 'value': f"{ml_input['Precipitation']:.1f}mm", 'source': location_data['data_sources'].get('weather', 'N/A')},
+                {'feature': 'MaxT', 'value': f"{ml_input['MaxT']:.1f}°C", 'source': location_data['data_sources'].get('weather', 'N/A')},
+                {'feature': 'weather_humidity', 'value': f"{ml_input['weather_humidity']:.0f}%", 'source': location_data['data_sources'].get('weather', 'N/A')},
+                {'feature': 'water_quantity', 'value': water_quantity, 'source': 'ML Model'}
+            ],
+            'model_connection': {
+                'status': 'connected',
+                'models_used': ['Model A (Irrigation)', 'Model B (Alert)'],
+                'integration': 'active',
+                'data_fetch': 'automatic'
+            }
+        }
+        
+        return jsonify(response), 200
+        
+    except Exception as e:
+        logger.error(f"Error in predict_with_location: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/crops', methods=['GET'])
+def get_crops():
+    """Get list of all available crops with their sensitivity levels"""
+    try:
+        high_sensitivity = get_all_crops_by_sensitivity(2)
+        medium_sensitivity = get_all_crops_by_sensitivity(1)
+        low_sensitivity = get_all_crops_by_sensitivity(0)
+        
+        return jsonify({
+            'success': True,
+            'crops': {
+                'high_sensitivity': high_sensitivity,
+                'medium_sensitivity': medium_sensitivity,
+                'low_sensitivity': low_sensitivity
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/crops/search', methods=['GET'])
+def search_crops_endpoint():
+    """Search for crops by name"""
+    try:
+        query = request.args.get('q', '')
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'Query parameter "q" is required'
+            }), 400
+        
+        results = search_crops(query)
+        
+        return jsonify({
+            'success': True,
+            'query': query,
+            'results': results
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/crop-info/<crop_key>', methods=['GET'])
+def get_crop_info_endpoint(crop_key):
+    """Get detailed information about a specific crop"""
+    try:
+        info = get_crop_info(crop_key)
+        
+        return jsonify({
+            'success': True,
+            'crop': crop_key,
+            'info': info
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 # ============================================
@@ -297,6 +732,43 @@ def internal_error(error):
 
 
 # ============================================
+# HEALTH CHECK & KEEP-ALIVE
+# ============================================
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Render/monitoring"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'service': 'Smart Irrigation System',
+        'location_service': LOCATION_SERVICE_ENABLED
+    }), 200
+
+
+def keep_alive():
+    """
+    Keep-alive function to prevent Render free tier from sleeping
+    Pings the health endpoint every 14 minutes
+    """
+    app_url = os.getenv('RENDER_EXTERNAL_URL', os.getenv('APP_URL', ''))
+    
+    if not app_url:
+        logger.info("⚠️ No APP_URL set, keep-alive disabled (local development)")
+        return
+    
+    logger.info(f"🔄 Keep-alive started for: {app_url}")
+    
+    while True:
+        try:
+            time.sleep(840)  # 14 minutes
+            response = http_requests.get(f"{app_url}/health", timeout=30)
+            logger.info(f"💓 Keep-alive ping: {response.status_code}")
+        except Exception as e:
+            logger.warning(f"⚠️ Keep-alive ping failed: {e}")
+
+
+# ============================================
 # MAIN
 # ============================================
 
@@ -306,6 +778,14 @@ if __name__ == '__main__':
     print("="*70)
     print("📍 Server starting...")
     print("🌐 Access the application at: http://localhost:5000")
+    print(f"📍 Location Service: {'ENABLED' if LOCATION_SERVICE_ENABLED else 'DISABLED'}")
     print("="*70 + "\n")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Run without debug to avoid reloader issues
+    app.run(debug=False, host='0.0.0.0', port=5000)
+else:
+    # Production mode (gunicorn) - start keep-alive thread
+    if os.getenv('RENDER') or os.getenv('APP_URL'):
+        keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
+        keep_alive_thread.start()
+        logger.info("🚀 Keep-alive thread started for production")

@@ -4,6 +4,10 @@
 
 const el = (id) => document.getElementById(id);
 
+// Global variables
+let autocompleteTimeout = null;
+let selectedSuggestionIndex = -1;
+
 // Scenario presets
 const SCENARIOS = {
   dry: {
@@ -454,11 +458,11 @@ el('runBtn').addEventListener('click', async () => {
 
   const reqPayload = payload();
   const btn = el('runBtn');
-  const originalText = btn.innerHTML;
   
-  // Show loading state
+  // Show loading state with animation
   btn.disabled = true;
-  btn.innerHTML = '<span>Processing...</span>';
+  btn.classList.remove('done');
+  btn.classList.add('loading');
 
   try {
     // Call Flask backend /predict endpoint
@@ -551,18 +555,507 @@ el('runBtn').addEventListener('click', async () => {
     
     // Update system status
     updateSystemStatus('Inference Complete');
+    
+    // Show done state
+    btn.classList.remove('loading');
+    btn.classList.add('done');
+    
+    // Reset to normal after 2 seconds
+    setTimeout(() => {
+      btn.classList.remove('done');
+      btn.disabled = false;
+    }, 2000);
 
   } catch (e) {
     console.error('Error:', e);
     setBadge('decisionBadge', 'Error', { bg: '#fef2f2', fg: '#b91c1c' }, 'x-circle');
     setBadge('alertBadge', 'Error', { bg: '#fff7ed', fg: '#c2410c' }, 'alert-triangle');
     alert('Server error. Please ensure models are trained and try again.');
-  } finally {
-    // Restore button
+    
+    // Reset button on error
+    btn.classList.remove('loading');
+    btn.classList.remove('done');
     btn.disabled = false;
-    btn.innerHTML = originalText;
   }
 });
+
+// ============================================
+// LOCATION-BASED AUTO-FETCH
+// ============================================
+
+function switchMode(mode) {
+  const manualBtn = el('manualModeBtn');
+  const autoBtn = el('autoModeBtn');
+  const manualContent = el('manualModeContent');
+  const autoContent = el('autoModeContent');
+  
+  if (mode === 'manual') {
+    manualBtn.classList.add('mode-active');
+    autoBtn.classList.remove('mode-active');
+    manualBtn.style.background = '#fff';
+    autoBtn.style.background = 'transparent';
+    manualContent.style.display = 'block';
+    autoContent.style.display = 'none';
+  } else {
+    autoBtn.classList.add('mode-active');
+    manualBtn.classList.remove('mode-active');
+    autoBtn.style.background = '#fff';
+    manualBtn.style.background = 'transparent';
+    autoContent.style.display = 'block';
+    manualContent.style.display = 'none';
+  }
+}
+
+// New animated switch function with sliding effect
+function switchModeAnimated(mode) {
+  const slider = el('modeToggleSlider');
+  const manualBtn = el('manualModeBtn');
+  const autoBtn = el('autoModeBtn');
+  const manualContent = el('manualModeContent');
+  const autoContent = el('autoModeContent');
+  const sliderBg = slider.querySelector('.slider-bg');
+  
+  // Calculate actual button dimensions
+  const manualRect = manualBtn.getBoundingClientRect();
+  const autoRect = autoBtn.getBoundingClientRect();
+  const sliderRect = slider.getBoundingClientRect();
+  
+  if (mode === 'manual') {
+    // Slide to left (manual)
+    slider.classList.remove('auto-active');
+    manualBtn.classList.add('active');
+    autoBtn.classList.remove('active');
+    manualContent.style.display = 'block';
+    autoContent.style.display = 'none';
+    
+    // Position slider over manual button
+    sliderBg.style.left = '6px';
+    sliderBg.style.width = manualRect.width + 'px';
+  } else {
+    // Slide to right (auto)
+    slider.classList.add('auto-active');
+    autoBtn.classList.add('active');
+    manualBtn.classList.remove('active');
+    autoContent.style.display = 'block';
+    manualContent.style.display = 'none';
+    
+    // Position slider over auto button
+    const leftOffset = manualRect.width + 6 + 8; // 6px padding + 8px gap
+    sliderBg.style.left = leftOffset + 'px';
+    sliderBg.style.width = autoRect.width + 'px';
+  }
+}
+
+// Initialize slider position on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Set initial slider position
+  setTimeout(() => {
+    const manualBtn = el('manualModeBtn');
+    const sliderBg = document.querySelector('.slider-bg');
+    if (manualBtn && sliderBg) {
+      const manualRect = manualBtn.getBoundingClientRect();
+      sliderBg.style.left = '6px';
+      sliderBg.style.width = manualRect.width + 'px';
+    }
+  }, 100);
+});
+
+// ============================================
+// GEOLOCATION & AUTOCOMPLETE
+// ============================================
+
+function requestGeolocation() {
+  const btn = el('useMyLocationBtn');
+  
+  if (!navigator.geolocation) {
+    alert('❌ Geolocation is not supported by your browser');
+    return;
+  }
+  
+  // Update button state
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<img src="https://api.iconify.design/lucide-loader-2.svg?color=%23ffffff" style="width: 14px; height: 14px; animation: spin 1s linear infinite;"/> Getting location...';
+  
+  // Request permission and get coordinates
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      
+      console.log(`📍 Got coordinates: ${latitude}, ${longitude}`);
+      showFetchStatus('info', `📍 Got GPS coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      
+      try {
+        // Show progress
+        showFetchStatus('info', '🔄 Converting coordinates to location name...');
+        
+        // Reverse geocode to get location name
+        const response = await fetch('/api/geocode-reverse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latitude, longitude })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // Populate location input
+          el('locationInput').value = result.location;
+          showFetchStatus('success', `✅ Location detected: ${result.location}`);
+          console.log(`✅ Reverse geocoded to: ${result.location}`);
+        } else {
+          // Fallback: use coordinates directly
+          const coordsString = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          el('locationInput').value = coordsString;
+          showFetchStatus('error', `⚠️ Could not get location name. Using coordinates: ${coordsString}`);
+          console.warn('Reverse geocoding failed, using coordinates:', result.error);
+        }
+      } catch (error) {
+        console.error('Reverse geocoding error:', error);
+        // Fallback: use coordinates
+        const coordsString = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        el('locationInput').value = coordsString;
+        showFetchStatus('error', `⚠️ Using coordinates: ${coordsString}. You can edit this manually.`);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    },
+    (error) => {
+      console.error('Geolocation error:', error);
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+      
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          alert('❌ Location permission denied. Please enable location access in your browser settings.');
+          break;
+        case error.POSITION_UNAVAILABLE:
+          alert('❌ Location information unavailable.');
+          break;
+        case error.TIMEOUT:
+          alert('❌ Location request timed out.');
+          break;
+        default:
+          alert('❌ An unknown error occurred.');
+      }
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
+
+let autocompleteDebounce = null;
+
+function handleLocationInput() {
+  const input = el('locationInput');
+  const query = input.value.trim();
+  
+  // Clear previous timeout
+  if (autocompleteDebounce) {
+    clearTimeout(autocompleteDebounce);
+  }
+  
+  // Hide suggestions if query too short
+  if (query.length < 3) {
+    el('locationSuggestions').style.display = 'none';
+    return;
+  }
+  
+  // Debounce the API call
+  autocompleteDebounce = setTimeout(async () => {
+    try {
+      const response = await fetch(`/api/location-suggestions?q=${encodeURIComponent(query)}`);
+      const result = await response.json();
+      
+      if (result.success && result.suggestions.length > 0) {
+        displayLocationSuggestions(result.suggestions);
+      } else {
+        el('locationSuggestions').style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Autocomplete error:', error);
+      el('locationSuggestions').style.display = 'none';
+    }
+  }, 500); // Wait 500ms after user stops typing
+}
+
+function displayLocationSuggestions(suggestions) {
+  const container = el('locationSuggestions');
+  container.innerHTML = '';
+  selectedSuggestionIndex = -1;
+  
+  suggestions.forEach((suggestion, index) => {
+    const div = document.createElement('div');
+    div.className = 'location-suggestion-item';
+    div.style.cssText = 'padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;';
+    div.innerHTML = `
+      <div style="font-weight: 500; color: #0f172a;">${suggestion.name}</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+        📍 ${suggestion.latitude.toFixed(4)}, ${suggestion.longitude.toFixed(4)}
+      </div>
+    `;
+    
+    div.addEventListener('mouseenter', () => {
+      div.style.background = '#f1f5f9';
+    });
+    
+    div.addEventListener('mouseleave', () => {
+      div.style.background = 'white';
+    });
+    
+    div.addEventListener('click', () => {
+      selectLocationSuggestion(suggestion);
+    });
+    
+    div.dataset.index = index;
+    container.appendChild(div);
+  });
+  
+  container.style.display = 'block';
+}
+
+function selectLocationSuggestion(suggestion) {
+  el('locationInput').value = suggestion.name;
+  el('locationSuggestions').style.display = 'none';
+  selectedSuggestionIndex = -1;
+}
+
+function handleLocationKeydown(event) {
+  const container = el('locationSuggestions');
+  const items = container.querySelectorAll('.location-suggestion-item');
+  
+  if (container.style.display === 'none' || items.length === 0) {
+    return;
+  }
+  
+  switch(event.key) {
+    case 'ArrowDown':
+      event.preventDefault();
+      selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, items.length - 1);
+      highlightSuggestion(items);
+      break;
+      
+    case 'ArrowUp':
+      event.preventDefault();
+      selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+      highlightSuggestion(items);
+      break;
+      
+    case 'Enter':
+      event.preventDefault();
+      if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < items.length) {
+        items[selectedSuggestionIndex].click();
+      }
+      break;
+      
+    case 'Escape':
+      container.style.display = 'none';
+      selectedSuggestionIndex = -1;
+      break;
+  }
+}
+
+function highlightSuggestion(items) {
+  items.forEach((item, index) => {
+    if (index === selectedSuggestionIndex) {
+      item.style.background = '#e0f2fe';
+      item.style.borderLeft = '3px solid #0ea5e9';
+    } else {
+      item.style.background = 'white';
+      item.style.borderLeft = 'none';
+    }
+  });
+}
+
+// Close suggestions when clicking outside
+document.addEventListener('click', (event) => {
+  const locationInput = el('locationInput');
+  const locationSuggestions = el('locationSuggestions');
+  
+  if (locationInput && locationSuggestions) {
+    if (!locationInput.contains(event.target) && !locationSuggestions.contains(event.target)) {
+      locationSuggestions.style.display = 'none';
+      selectedSuggestionIndex = -1;
+    }
+  }
+});
+
+async function fetchDataByLocation() {
+  const locationInput = el('locationInput');
+  const cropTypeSelect = el('cropTypeSelect');
+  const fetchBtn = el('fetchDataBtn');
+  const fetchStatus = el('fetchStatus');
+  const dataSourcesDisplay = el('dataSourcesDisplay');
+  const dataSourcesList = el('dataSourcesList');
+  const loadingOverlay = el('loadingOverlay');
+  
+  const location = locationInput.value.trim();
+  const cropType = cropTypeSelect.value;
+  
+  if (!location) {
+    showFetchStatus('error', '❌ Please enter a location');
+    return;
+  }
+  
+  // Show loading overlay animation
+  loadingOverlay.classList.add('active');
+  
+  // Disable button during fetch
+  const originalBtnText = fetchBtn.innerHTML;
+  fetchBtn.disabled = true;
+  fetchBtn.innerHTML = '<img src="https://api.iconify.design/lucide-loader-2.svg?color=%23ffffff" style="width: 20px; height: 20px; animation: spin 1s linear infinite;"/> <span>Fetching...</span>';
+  dataSourcesDisplay.style.display = 'none';
+  
+  try {
+    // Call the auto-fetch endpoint
+    const response = await fetch('/api/fetch-data-by-location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: location,
+        crop_type: cropType
+      })
+    });
+    
+    const result = await response.json();
+    
+    // Hide loading overlay
+    loadingOverlay.classList.remove('active');
+    
+    if (result.success) {
+      // Populate the form fields with fetched data
+      const data = result.data;
+      
+      el('soil_moisture').value = data.soil_moisture;
+      el('Moisture_Trend').value = data.Moisture_Trend;
+      el('Precipitation').value = data.Precipitation;
+      el('weather_humidity').value = data.weather_humidity;
+      el('MaxT').value = data.MaxT;
+      el('MinT').value = data.MinT;
+      el('Water_Sensitivity').value = data.Water_Sensitivity;
+      
+      // Update displays
+      inputs.forEach(inp => {
+        const value = el(inp.id).value;
+        const output = el(inp.out);
+        if (output) {
+          output.textContent = inp.fmt(value);
+        }
+      });
+      
+      // Update payload preview
+      renderPayload();
+      
+      // Update trends
+      updateTrends(data);
+      
+      // Show success status (subtle message)
+      showFetchStatus('success', `✅ Data fetched successfully for ${result.location}`);
+      
+      // Display data sources
+      let sourcesHTML = '';
+      for (const [key, value] of Object.entries(result.data_sources)) {
+        sourcesHTML += `<div style="display: flex; justify-content: space-between; padding: 4px 0;">
+          <span>${key}:</span>
+          <span style="font-weight: 700;">${value}</span>
+        </div>`;
+      }
+      dataSourcesList.innerHTML = sourcesHTML;
+      dataSourcesDisplay.style.display = 'block';
+      
+      // ===== POPULATE WEATHER CARD =====
+      updateWeatherCard(data, result.location, result.crop_type);
+      
+      // Update system status
+      updateSystemStatus(`Data fetched: ${result.location}`);
+      
+    } else {
+      showFetchStatus('error', `❌ ${result.error}`);
+    }
+    
+  } catch (error) {
+    console.error('Fetch error:', error);
+    loadingOverlay.classList.remove('active');
+    showFetchStatus('error', `❌ Failed to fetch data: ${error.message}`);
+  } finally {
+    fetchBtn.disabled = false;
+    fetchBtn.innerHTML = originalBtnText;
+  }
+}
+
+function showFetchStatus(type, message) {
+  const fetchStatus = el('fetchStatus');
+  fetchStatus.style.display = 'block';
+  fetchStatus.textContent = message;
+  
+  if (type === 'success') {
+    fetchStatus.style.background = 'rgba(16, 185, 129, 0.2)';
+    fetchStatus.style.color = '#065f46';
+    fetchStatus.style.border = '2px solid rgba(16, 185, 129, 0.5)';
+  } else if (type === 'error') {
+    fetchStatus.style.background = 'rgba(239, 68, 68, 0.2)';
+    fetchStatus.style.color = '#991b1b';
+    fetchStatus.style.border = '2px solid rgba(239, 68, 68, 0.5)';
+  } else {
+    fetchStatus.style.background = 'rgba(59, 130, 246, 0.2)';
+    fetchStatus.style.color = '#1e40af';
+    fetchStatus.style.border = '2px solid rgba(59, 130, 246, 0.5)';
+  }
+}
+
+// ============================================
+// WEATHER CARD UPDATE FUNCTION
+// ============================================
+function updateWeatherCard(data, location, cropType) {
+  const weatherCardSection = el('weatherCardSection');
+  
+  // Show the weather card section with visible class (for fixed position)
+  weatherCardSection.classList.add('visible');
+  
+  // Calculate average temperature for main display
+  const avgTemp = ((parseFloat(data.MaxT) + parseFloat(data.MinT)) / 2).toFixed(0);
+  
+  // Update main weather display
+  el('weatherMainTemp').textContent = `${avgTemp}°C`;
+  
+  // Shorten location for display
+  const shortLocation = location ? location.split(',')[0] : 'Unknown';
+  el('weatherLocation').textContent = shortLocation;
+  
+  // Update detail items
+  el('weatherHumidity').textContent = `${parseFloat(data.weather_humidity).toFixed(0)}%`;
+  el('weatherPrecipitation').textContent = `${parseFloat(data.Precipitation).toFixed(1)}mm`;
+  el('weatherMinTemp').textContent = `${parseFloat(data.MinT).toFixed(0)}°C`;
+  el('weatherMaxTemp').textContent = `${parseFloat(data.MaxT).toFixed(0)}°C`;
+  el('weatherSoilMoisture').textContent = `${parseFloat(data.soil_moisture).toFixed(0)}%`;
+  
+  // Update status badge based on conditions
+  const statusBadge = el('weatherStatusBadge');
+  const statusText = el('weatherStatusText');
+  
+  // Determine status based on soil moisture
+  const soilMoisture = parseFloat(data.soil_moisture);
+  
+  if (soilMoisture < 45) {
+    statusBadge.className = 'card3 warning';
+    statusText.textContent = '⚠️ Needs Water';
+  } else if (soilMoisture > 55) {
+    statusBadge.className = 'card3';
+    statusText.textContent = '✓ Healthy';
+  } else {
+    statusBadge.className = 'card3';
+    statusText.textContent = '✓ Good';
+  }
+}
+
+function updateWeatherIcon(data) {
+  // This could be enhanced to show different icons based on weather
+}
 
 // ============================================
 // INITIALIZATION
@@ -575,4 +1068,5 @@ document.addEventListener('DOMContentLoaded', () => {
   updateSystemStatus('Ready');
   updateTrends(payload());
   console.log('🌱 Smart Irrigation System initialized');
+  console.log('📍 Location-based auto-fetch: ENABLED');
 });
